@@ -235,20 +235,23 @@ dict_new (DictKeyFuncs * funcs)
 }
 
 static DictNode **search (Dict *d, const void *k, unsigned hash, 
-                          int *depth)
+                          int *depth_p)
 {
   DictNode **np = &(d->slots[hash_to_index (d, hash)]);
   DictNode *n;
   int heur_size = 0;
   int heur_depth = 0;
-  *depth = 0;
+  int depth = 0;
   for (;;)
     {
       int cmp;
 
       n = *np;
       if (!n)
-        return np;
+        {
+          *depth_p = depth;
+          return np;
+        }
       if (n->hash == hash)
         cmp = d->keyfuncs->cmp_fn (k, n->entry.key);
       else
@@ -273,9 +276,12 @@ static DictNode **search (Dict *d, const void *k, unsigned hash,
           np = &(n->children[1]);
         }
       else
-        return np;
+        {
+          *depth_p = depth;
+          return np;
+        }
       
-      (*depth)++;
+      depth++;
     }
 }
 
@@ -554,7 +560,8 @@ DictEntry *
 dict_first (Dict * d)
 {
   int i;
-  for (i = 0; i < (1u << d->l2_n_slots); i++)
+  int size = (1u << d->l2_n_slots);
+  for (i = 0; i < size; i++)
     if (d->slots[i])
       {
         DictEntryStack *des = malloc (sizeof *des);
