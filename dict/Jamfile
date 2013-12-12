@@ -1,0 +1,1 @@
+Main test_dict : test_dict.c dict.c ;
