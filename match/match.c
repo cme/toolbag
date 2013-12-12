@@ -1,36 +1,67 @@
 /* Simple text pattern matching */
 
 #include "match.h"
-#include <ctype.h>
 
-int match(const char *pattern, const char *str)
+int match (const char *pattern, const char *str)
 {
   for (;;)
     {
-      if (*pattern == '\0')
-        {
-          if (*str == '\0')
-            return 1;
+      if (*pattern == '*')
+	{
+	  const char *p, *s;
+	  /* '*' text ::= match the next instance of 'text' */
+	  while (*pattern == '*')
+	    pattern++;
+          p = pattern; s = str;
+          for (;;)
+            {
+              if (*p == '\0' && *s == '\0')
+                /* Successfully matched end of string */
+                return 1;
+              else if (*p == '*')
+                {
+                  /* End of this pattern word, successfully matched. */
+                  pattern = p;
+                  str = s;
+                  break;
+                }
+              else if (*s == '\0')
+                {
+                  /* Ran out of string. No match. */
+                  return 0;
+                }
+              else if (*p != *s)
+                {
+                  /* Retry match from slightly further on. */
+                  s = ++str;
+                  p = pattern;
+                }
+              else
+                {
+                  /* Successfully matched a character! */
+                  s++;
+                  p++;
+                }
+            }
+	}
+      else
+	{
+          /* text ::= match text at current position. */
+          if (*pattern == *str)
+            {
+              if (*pattern != '\0')
+                {
+                  /* Successful character match. */
+                  str++;
+                  pattern++;
+                }
+              else
+                /* End of pattern, and end of string. */
+                return 1;
+            }
           else
             return 0;
-        }
-      else if (*pattern == '*')
-        {
-          while (*pattern == '*')
-            pattern++;
-          if (!pattern)
-            return 1;
-          while (*str)
-            if (*str == *pattern
-                && match(pattern+1, str+1))
-              return 1;
-            else
-              str++;
-        }
-      else if (*pattern == *str)
-        str++, pattern++;
-      else
-        return 0;
+	}
     }
 }
 
