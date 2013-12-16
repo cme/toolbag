@@ -1,4 +1,6 @@
+
 SubDir TOP ;
+ALL_LOCATE_TARGET = $(TOP)/build-$(OSFULL) ;
 SubInclude TOP match ;
 SubInclude TOP dict ;
 
