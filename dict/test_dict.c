@@ -236,9 +236,45 @@ test (void)
 	}
       else if (!strcmp (buffer, "test"))
         {
-          int i;
+          int i, j;
+          char *res;
+          /* Populate with test data, checking all the time. */
           for (i = 0; test_items[i].key; i++)
-            dict_set (d, test_items[i].key, strdup(test_items[i].value));
+            {
+              dict_set (d, test_items[i].key, strdup(test_items[i].value));
+              for (j = 0; test_items[j].key; j++)
+                {
+                  res = dict_get (d, test_items[j].key);
+                  if (j <= i)
+                    {
+                      if (res == NULL)
+                        {
+                          printf ("Test fail: key '%s' should exist, but doesn't.\n",
+                                  test_items[j].key);
+                          fail = true;
+                        }
+                      else if (strcmp(res, test_items[j].value))
+                        {
+                          printf ("Test fail: key '%s' should be '%s' but is '%s'\n",
+                                  test_items[j].key, test_items[j].value, res);
+                          fail = true;
+                        }
+                    }
+                  else
+                    {
+                      if (res != NULL)
+                        {
+                          printf ("Test fail: spurious value for key '%s'\n",
+                                   test_items[j].key);
+                          fail = true;
+                        }
+                    }
+                }
+            }
+          if (fail)
+            printf ("Insert test failed.\n");
+          else
+            printf ("Insert test passed.\n");
         }
       else if (!strcmp (buffer, "help"))
         {
@@ -249,6 +285,7 @@ test (void)
                   "    dump\n"
                   "    dot // dump structure in dot format\n"
                   "    check <key> <value>\n"
+                  "    checknull <key> <value>\n"
                   "    delete <key>\n"
                   "    exit\n"
                   "    free\n"
