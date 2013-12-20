@@ -279,22 +279,22 @@ test (void)
       else if (!strcmp (buffer, "help"))
         {
           printf ("Commands:\n"
-                  "    set <key> <value>\n"
-                  "    insert <key> <value>\n"
-                  "    get <key>\n"
-                  "    dump\n"
-                  "    dot // dump structure in dot format\n"
-                  "    check <key> <value>\n"
-                  "    checknull <key> <value>\n"
-                  "    delete <key>\n"
+                  "    set <key> <value>\t// store text in dictionary\n"
+                  "    insert <key> <value>\t// insert text, assuming key doesn't already exist\n"
+                  "    get <key>\t// lookup dictionary, print result\n"
+                  "    dump\t// dump dictionary structure\n"
+                  "    dot\t// dump structure to file in dot format\n"
+                  "    check <key> <value>\t// check that dictionary has key-value pair\n"
+                  "    checknull <key> <value>\t// check that key has no value\n"
+                  "    delete <key>\t// delete entry associated with a key\n"
                   "    exit\n"
-                  "    free\n"
-                  "    list\n"
-                  "    rehash <n>\n"
-                  "    decode (one|two|three|*)\n"
+                  "    free\t// free and reallocate dictionary\n"
+                  "    list\t// list contents of dictionary\n"
+                  "    rehash <n>\t// rehash dictionary with n buckets (must be power of 2)\n"
+                  "    decode (one|two|three|*)\t// test decoding\n"
                   "    verbose\n"
                   "    terse\n"
-                  "    test // populate with test data\n");
+                  "    test\t// populate with test data, check integrity\n");
         }
       else
 	{

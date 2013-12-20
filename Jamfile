@@ -4,3 +4,4 @@ ALL_LOCATE_TARGET = $(TOP)/build-$(OSFULL) ;
 SubInclude TOP match ;
 SubInclude TOP dict ;
 
+Main guniq : guniq.c dict.c ;
