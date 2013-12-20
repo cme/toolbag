@@ -72,6 +72,10 @@ int main (int argc, char *argv[])
       dict_dump_dot (lines, stdout, dot_count);
     }
 
+  /* Free. */
+  for (de = dict_first (lines); de; de = dict_next (lines, de))
+    free (de->value);
   dict_free (lines);
+
   return EXIT_SUCCESS;
 }
