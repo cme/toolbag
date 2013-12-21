@@ -1,6 +1,6 @@
 #ifndef APPEND
 /* Append a VALUE to an ARRAY of length LEN.
-** It is assumed that the space allocated to the array is sufficrient
+** It is assumed that the space allocated to the array is sufficient
 ** to hold 2^n elements, thus the space is reallocated when the
 ** current length is an exact power of two. The allocated space is
 ** doubled to retain the 2^n property.
