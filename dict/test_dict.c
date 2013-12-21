@@ -83,15 +83,15 @@ void test_commands(Dict *d, FILE *in)
       char buffer2[BUFSIZ];
       updated = 0;
       /* Get word from input */
-      if (!fscanf (in, "%s", buffer))
+      if (fscanf (in, "%s", buffer) != 1)
 	break;
       /* Decode commands */
       if (!strcmp (buffer, "set"))
 	{
           updated = 1;
-	  if (!fscanf (in, "%s", buffer))
+	  if (fscanf (in, "%s", buffer) != 1)
 	    break;
-	  if (!fscanf (in, "%s", buffer2))
+	  if (fscanf (in, "%s", buffer2) != 1)
 	    break;
           if (dict_has_key (d, buffer))
             free (dict_get (d, buffer));
@@ -100,15 +100,15 @@ void test_commands(Dict *d, FILE *in)
       else if (!strcmp (buffer, "insert"))
 	{
           updated = 1;
-	  if (!fscanf (in, "%s", buffer))
+	  if (fscanf (in, "%s", buffer) != 1)
 	    break;
-	  if (!fscanf (in, "%s", buffer2))
+	  if (fscanf (in, "%s", buffer2) != 1)
 	    break;
 	  dict_insert (d, buffer, strdup (buffer2));
 	}
       else if (!strcmp (buffer, "get"))
 	{
-	  if (!fscanf (in, "%s", buffer))
+	  if (fscanf (in, "%s", buffer) != 1)
 	    break;
 	  printf ("'%s' => '%s'\n", buffer, (char *) dict_get (d, buffer));
 	}
@@ -142,9 +142,9 @@ void test_commands(Dict *d, FILE *in)
       else if (!strcmp (buffer, "check"))
 	{
 	  char *res;
-	  if (!fscanf (in, "%s", buffer))
+	  if (fscanf (in, "%s", buffer) != 1)
 	    break;
-	  if (!fscanf (in, "%s", buffer2))
+	  if (fscanf (in, "%s", buffer2) != 1)
 	    break;
 	  res = dict_get (d, buffer);
 	  if (!res || strcmp (buffer2, res))
@@ -161,7 +161,7 @@ void test_commands(Dict *d, FILE *in)
       else if (!strcmp (buffer, "checknull"))
 	{
 	  char *res;
-	  if (!fscanf (in, "%s", buffer))
+	  if (fscanf (in, "%s", buffer) != 1)
 	    break;
 	  res = dict_get (d, buffer);
 	  if (res != NULL)
@@ -174,7 +174,7 @@ void test_commands(Dict *d, FILE *in)
       else if (!strcmp (buffer, "delete"))
 	{
           updated = 1;
-	  if (!fscanf (in, "%s", buffer))
+	  if (fscanf (in, "%s", buffer) != 1)
 	    break;
           if (dict_has_key (d, buffer))
             free (dict_get (d, buffer));
@@ -210,7 +210,7 @@ void test_commands(Dict *d, FILE *in)
 	{
 	  extern void dict_rehash_TEST (Dict *d, int size);
           updated = 1;
-	  if (!fscanf (in, "%s", buffer))
+	  if (fscanf (in, "%s", buffer) != 1)
 	    break;
 	  dict_rehash_TEST (d, atoi (buffer));
 	}
@@ -224,7 +224,7 @@ void test_commands(Dict *d, FILE *in)
 	  };
 	  static Dict *d;
 	  int val;
-	  if (!fscanf (in, "%s", buffer))
+	  if (fscanf (in, "%s", buffer) != 1)
 	    break;
 	  val = dict_decode (&d, dd, buffer);
 	  printf ("Decoded value '%s' -> %d\n", buffer, val);
@@ -272,6 +272,22 @@ void test_commands(Dict *d, FILE *in)
           else
             printf ("Insert test passed.\n");
         }
+      else if (!strcmp (buffer, "include"))
+        {
+          FILE *in2;
+          if (fscanf(in, "%s", buffer) != 1)
+            break;
+          in2 = fopen(buffer, "r");
+          if (!in2)
+            {
+              fprintf (stderr, "Cannot include file '%s'\n", buffer);
+            }
+          else
+            {
+              test_commands (d, in2);
+              fclose (in2);
+            }
+        }
       else if (!strcmp (buffer, "help"))
         {
           printf ("Commands:\n"
@@ -290,7 +306,8 @@ void test_commands(Dict *d, FILE *in)
                   "    decode (one|two|three|*)\t// test decoding\n"
                   "    verbose\n"
                   "    terse\n"
-                  "    test\t// populate with test data, check integrity\n");
+                  "    test\t// populate with test data, check integrity\n"
+                  "    include <file>\t// read commands from file\n");
         }
       else
 	{
@@ -332,17 +349,6 @@ test (void)
 int
 main ()
 {
-  Dict *d;
-  d = dict_new (NULL);
-  dict_set (d, "Hello", "there");
-  dict_set (d, "foo", "bar");
-  printf ("Hello -> %s\n", (char *) dict_get (d, "Hello"));
-  printf ("foo -> %s\n", (char *) dict_get (d, "foo"));
-  printf ("bar -> %s\n", (char *) dict_get (d, "bar"));
-  dict_set (d, "bar", "tron");
-  dict_dumpf (d, stdout, "%s -> %s");
-  printf ("OK\n");
-  dict_free (d);
   return test ();
 }
 
