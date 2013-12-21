@@ -110,20 +110,20 @@ hash_to_index (Dict * d, unsigned hash)
 static void
 dict_dump_nodes (Dict *d, FILE *out,
                  void (*print) (FILE *out, const void *k, void *value),
-                 DictNode *n, int indent, int childno)
+                 DictNode *n, int depth, int childno, int *total_depth, int *n_entries)
 {
   int i;
   if (n->children[0])
-    dict_dump_nodes (d, out, print, n->children[0], indent + 4, 0);
+    dict_dump_nodes (d, out, print, n->children[0], depth + 1, 0, total_depth, n_entries);
 
-  for (i = 0; i < indent; i++)
-    fputc (' ', out);
+  for (i = 0; i < depth; i++)
+    fputs ("    ", out);
   if (childno == 0)
-    fprintf (out, ".-> ");
+    fputs (".-> ", out);
   else if (childno == 1)
-    fprintf (out, "'-> ");
+    fputs ("'-> ", out);
   else
-    fprintf (out, "|-> ");
+    fputs ("|-> ", out);
   fprintf (out, "hash=0x%x ", n->hash);
   if (print)
     print (out, n->entry.key, n->entry.value);
@@ -132,8 +132,11 @@ dict_dump_nodes (Dict *d, FILE *out,
              n->entry.value);
   fputc ('\n', out);
 
+  *total_depth += depth;
+  *n_entries += 1;
+
   if (n->children[1])
-    dict_dump_nodes (d, out, print, n->children[1], indent + 4, 1);
+    dict_dump_nodes (d, out, print, n->children[1], depth + 1, 1, total_depth, n_entries);
 
 }
 
@@ -142,13 +145,25 @@ dict_dump (Dict * d, FILE * out,
 	   void (*print) (FILE * out, const void *k, void *value))
 {
   int i;
+  int total_depth, bucket_total_depth;
+  int n_bucket_entries;
+  
   fprintf (out, "Dictionary at %p\n", d);
   for (i = 0; i < (1u << d->l2_n_slots); i++)
     {
       DictNode *n = d->slots[i];
+      bucket_total_depth = 0;
+      n_bucket_entries = 0;
       fprintf (out, "[%d]:\n", i);
       if (n)
-        dict_dump_nodes (d, out, print, n, 0, 2);
+        {
+          dict_dump_nodes (d, out, print, n, 0, 2,
+                           &bucket_total_depth,
+                           &n_bucket_entries);
+          fprintf (out, "  (%d entries at average depth %f)\n",
+                   n_bucket_entries,
+                   1.0 + (double)bucket_total_depth / n_bucket_entries);
+        }
     }
   fprintf (out, "n_entries=%d, rehash_benefit=%d\n",
            d->n_entries, d->rehash_benefit);

@@ -71,36 +71,27 @@ void print_str_str (FILE * out, const void *k, void *value)
   fprintf (out, "'%s': '%s'", (char *)k, (char *)value);
 }
 
-int
-test (void)
+bool fail = false;
+int verbose = 0;
+int updated = 0;
+
+void test_commands(Dict *d, FILE *in)
 {
-  bool fail = false;
-  Dict *d = dict_new (NULL);
-  int verbose = 0;
-  dict_insert_entries (d,
-                       "hello", strdup("there"),
-                       "a", strdup("b"),
-                       NULL);
-                       
-  while (!feof (stdin))
+  while (!feof (in))
     {
       char buffer[BUFSIZ];
       char buffer2[BUFSIZ];
+      updated = 0;
       /* Get word from input */
-      if (verbose)
-        {
-          fprintf (stdout, "\nDictionary:\n");
-          dict_dump (d, stdout, print_str_str);
-          fprintf (stdout, "\n");
-        }
-      if (!scanf ("%s", buffer))
+      if (!fscanf (in, "%s", buffer))
 	break;
       /* Decode commands */
       if (!strcmp (buffer, "set"))
 	{
-	  if (!scanf ("%s", buffer))
+          updated = 1;
+	  if (!fscanf (in, "%s", buffer))
 	    break;
-	  if (!scanf ("%s", buffer2))
+	  if (!fscanf (in, "%s", buffer2))
 	    break;
           if (dict_has_key (d, buffer))
             free (dict_get (d, buffer));
@@ -108,15 +99,16 @@ test (void)
 	}
       else if (!strcmp (buffer, "insert"))
 	{
-	  if (!scanf ("%s", buffer))
+          updated = 1;
+	  if (!fscanf (in, "%s", buffer))
 	    break;
-	  if (!scanf ("%s", buffer2))
+	  if (!fscanf (in, "%s", buffer2))
 	    break;
 	  dict_insert (d, buffer, strdup (buffer2));
 	}
       else if (!strcmp (buffer, "get"))
 	{
-	  if (!scanf ("%s", buffer))
+	  if (!fscanf (in, "%s", buffer))
 	    break;
 	  printf ("'%s' => '%s'\n", buffer, (char *) dict_get (d, buffer));
 	}
@@ -150,9 +142,9 @@ test (void)
       else if (!strcmp (buffer, "check"))
 	{
 	  char *res;
-	  if (!scanf ("%s", buffer))
+	  if (!fscanf (in, "%s", buffer))
 	    break;
-	  if (!scanf ("%s", buffer2))
+	  if (!fscanf (in, "%s", buffer2))
 	    break;
 	  res = dict_get (d, buffer);
 	  if (!res || strcmp (buffer2, res))
@@ -169,7 +161,7 @@ test (void)
       else if (!strcmp (buffer, "checknull"))
 	{
 	  char *res;
-	  if (!scanf ("%s", buffer))
+	  if (!fscanf (in, "%s", buffer))
 	    break;
 	  res = dict_get (d, buffer);
 	  if (res != NULL)
@@ -181,7 +173,8 @@ test (void)
 	}
       else if (!strcmp (buffer, "delete"))
 	{
-	  if (!scanf ("%s", buffer))
+          updated = 1;
+	  if (!fscanf (in, "%s", buffer))
 	    break;
           if (dict_has_key (d, buffer))
             free (dict_get (d, buffer));
@@ -195,6 +188,7 @@ test (void)
       else if (!strcmp (buffer, "free"))
 	{
           DictEntry *de;
+          updated = 1;
           for (de = dict_first (d); de; de = dict_next (d, de))
             free (de->value);
 	  dict_free (d);
@@ -215,7 +209,8 @@ test (void)
       else if (!strcmp (buffer, "rehash"))
 	{
 	  extern void dict_rehash_TEST (Dict *d, int size);
-	  if (!scanf ("%s", buffer))
+          updated = 1;
+	  if (!fscanf (in, "%s", buffer))
 	    break;
 	  dict_rehash_TEST (d, atoi (buffer));
 	}
@@ -229,7 +224,7 @@ test (void)
 	  };
 	  static Dict *d;
 	  int val;
-	  if (!scanf ("%s", buffer))
+	  if (!fscanf (in, "%s", buffer))
 	    break;
 	  val = dict_decode (&d, dd, buffer);
 	  printf ("Decoded value '%s' -> %d\n", buffer, val);
@@ -239,6 +234,7 @@ test (void)
           int i, j;
           char *res;
           /* Populate with test data, checking all the time. */
+          updated = 1;
           for (i = 0; test_items[i].key; i++)
             {
               dict_set (d, test_items[i].key, strdup(test_items[i].value));
@@ -300,14 +296,32 @@ test (void)
 	{
 	  printf ("Unknown command '%s'\n", buffer);
 	}
-    }
 
-  {
-    DictEntry *de;
-    for (de = dict_first (d); de; de = dict_next (d, de))
-      free (de->value);
-    dict_free (d);
-  }
+      if (verbose && updated)
+        {
+          fprintf (stdout, "\nDictionary:\n");
+          dict_dump (d, stdout, print_str_str);
+          fprintf (stdout, "\n");
+        }
+    }
+}
+
+int
+test (void)
+{
+  Dict *d = dict_new (NULL);
+  DictEntry *de;
+  dict_insert_entries (d,
+                       "hello", strdup("there"),
+                       "a", strdup("b"),
+                       NULL);
+                       
+  test_commands (d, stdin);
+
+  for (de = dict_first (d); de; de = dict_next (d, de))
+    free (de->value);
+  dict_free (d);
+
   if (fail)
     fprintf (stdout, "FAILED\n");
   else
