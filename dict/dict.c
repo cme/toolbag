@@ -147,6 +147,7 @@ dict_dump (Dict * d, FILE * out,
   int i;
   int total_depth, bucket_total_depth;
   int n_bucket_entries;
+  int occupied = 0;
   
   fprintf (out, "Dictionary at %p\n", d);
   for (i = 0; i < (1u << d->l2_n_slots); i++)
@@ -157,16 +158,21 @@ dict_dump (Dict * d, FILE * out,
       fprintf (out, "[%d]:\n", i);
       if (n)
         {
+          occupied++;
           dict_dump_nodes (d, out, print, n, 0, 2,
                            &bucket_total_depth,
                            &n_bucket_entries);
           fprintf (out, "  (%d entries at average depth %f)\n",
                    n_bucket_entries,
                    1.0 + (double)bucket_total_depth / n_bucket_entries);
+          total_depth += bucket_total_depth;
         }
     }
   fprintf (out, "n_entries=%d, rehash_benefit=%d\n",
            d->n_entries, d->rehash_benefit);
+  fprintf (out, "occupied=%f%%, average depth=%f\n",
+           100.0 * (double)occupied/(1u<<d->l2_n_slots),
+           1.0 + (double)total_depth / d->n_entries);
 }
 
 static const char *dict_dump_fmt;
