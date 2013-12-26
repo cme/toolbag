@@ -110,11 +110,13 @@ hash_to_index (Dict * d, unsigned hash)
 static void
 dict_dump_nodes (Dict *d, FILE *out,
                  void (*print) (FILE *out, const void *k, void *value),
-                 DictNode *n, int depth, int childno, int *total_depth, int *n_entries)
+                 DictNode *n, int depth, int childno,
+                 int *total_depth, int *n_entries)
 {
   int i;
   if (n->children[0])
-    dict_dump_nodes (d, out, print, n->children[0], depth + 1, 0, total_depth, n_entries);
+    dict_dump_nodes (d, out, print, n->children[0], depth + 1, 0,
+                     total_depth, n_entries);
 
   for (i = 0; i < depth; i++)
     fputs ("    ", out);
@@ -132,11 +134,12 @@ dict_dump_nodes (Dict *d, FILE *out,
              n->entry.value);
   fputc ('\n', out);
 
-  *total_depth += depth;
+  *total_depth += 1 + depth;
   *n_entries += 1;
 
   if (n->children[1])
-    dict_dump_nodes (d, out, print, n->children[1], depth + 1, 1, total_depth, n_entries);
+    dict_dump_nodes (d, out, print, n->children[1], depth + 1, 1,
+                     total_depth, n_entries);
 
 }
 
@@ -147,8 +150,9 @@ dict_dump (Dict * d, FILE * out,
   int i;
   int total_depth, bucket_total_depth;
   int n_bucket_entries;
+  int total_ideal_depth = 0;
   int occupied = 0;
-  
+  total_depth = 0;
   fprintf (out, "Dictionary at %p\n", d);
   for (i = 0; i < (1u << d->l2_n_slots); i++)
     {
@@ -158,21 +162,50 @@ dict_dump (Dict * d, FILE * out,
       fprintf (out, "[%d]:\n", i);
       if (n)
         {
+          int ideal_depth = 0;
+
           occupied++;
           dict_dump_nodes (d, out, print, n, 0, 2,
                            &bucket_total_depth,
                            &n_bucket_entries);
-          fprintf (out, "  (%d entries at average depth %f)\n",
+          
+          /* Calculate the total depth of a perfectly balanced
+             tree containing N_BUCKET_ENTRIES nodes */
+          {
+            int d = 0;
+            int entries = n_bucket_entries;
+            for (;;)
+              {
+                if (entries > (1<<d))
+                  {
+                    /* More entries left than fit current depth. */
+                    ideal_depth += (d+1) * (1<<d);
+                    entries -= (1<<d);
+                    d++;
+                  }
+                else
+                  {
+                    /* Remaining entries fit at depth D */
+                    ideal_depth += (d+1) * entries;
+                    break;
+                  }
+              }
+          }
+          fprintf (out, "  (%d entries at average depth %f, efficiency=%f%%)\n",
                    n_bucket_entries,
-                   1.0 + (double)bucket_total_depth / n_bucket_entries);
+                   (double)bucket_total_depth / n_bucket_entries,
+                   100.0 * ideal_depth / bucket_total_depth);
+          
           total_depth += bucket_total_depth;
+          total_ideal_depth += ideal_depth;
         }
     }
   fprintf (out, "n_entries=%d, rehash_benefit=%d\n",
            d->n_entries, d->rehash_benefit);
-  fprintf (out, "occupied=%f%%, average depth=%f\n",
+  fprintf (out, "occupied=%f%%, average depth=%f, efficiency=%f%%\n",
            100.0 * (double)occupied/(1u<<d->l2_n_slots),
-           1.0 + (double)total_depth / d->n_entries);
+           (double)total_depth / d->n_entries,
+           100.0 * total_ideal_depth / total_depth);
 }
 
 static const char *dict_dump_fmt;
