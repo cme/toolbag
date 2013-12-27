@@ -483,10 +483,10 @@ static void
 check_rehash (Dict * d, unsigned depth)
 {
   if (d->rehash_benefit > d->n_entries + (1u << d->l2_n_slots)
-      && d->n_entries * 2 > (1u << d->l2_n_slots))
+      && d->n_entries * 4 > (1u << d->l2_n_slots))
     {
-      /* Profitable to double the size of the table. */
-      rehash (d, 2u << d->l2_n_slots);
+      /* Profitable to quadruple the size of the table. */
+      rehash (d, 4u << d->l2_n_slots);
       d->rehash_benefit = 0;
     }
 }

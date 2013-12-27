@@ -10,6 +10,7 @@
 
 static int show_counts = 0;
 static int show_dot = 0;
+static int show_dump = 0;
 
 void dot_count (FILE *out, const void *key, void *value)
 {
@@ -28,6 +29,8 @@ int main (int argc, char *argv[])
         show_counts = 1;
       else if (!strcmp(argv[i], "-d"))
         show_dot = 1;
+      else if (!strcmp(argv[i], "-m"))
+        show_dump = 1;
       else
         {
           fprintf (stderr, "Syntax: %s [-c] [-d]\n", argv[0]);
@@ -70,6 +73,10 @@ int main (int argc, char *argv[])
   if (show_dot)
     {
       dict_dump_dot (lines, stdout, dot_count);
+    }
+  if (show_dump)
+    {
+      dict_dump (lines, stdout, dot_count);
     }
 
   /* Free. */
