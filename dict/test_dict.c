@@ -9,7 +9,6 @@ struct test_item {
   char *key;
   char *value;
 } test_items[] = {
-  { "hello", "there" },
   { "hum hum hum", "hello!" },
   { "Hello", "THERE!" },
   { "LA LA LA", "thar" },
@@ -75,7 +74,7 @@ bool fail = false;
 int verbose = 0;
 int updated = 0;
 
-void test_commands(Dict *d, FILE *in)
+Dict *test_commands(Dict *d, FILE *in)
 {
   while (!feof (in))
     {
@@ -284,7 +283,7 @@ void test_commands(Dict *d, FILE *in)
             }
           else
             {
-              test_commands (d, in2);
+              d = test_commands (d, in2);
               fclose (in2);
             }
         }
@@ -321,6 +320,7 @@ void test_commands(Dict *d, FILE *in)
           fprintf (stdout, "\n");
         }
     }
+  return d;
 }
 
 int
@@ -333,11 +333,13 @@ test (void)
                        "a", strdup("b"),
                        NULL);
                        
-  test_commands (d, stdin);
-
-  for (de = dict_first (d); de; de = dict_next (d, de))
-    free (de->value);
-  dict_free (d);
+  d = test_commands (d, stdin);
+  if (d)
+    {
+      for (de = dict_first (d); de; de = dict_next (d, de))
+        free (de->value);
+      dict_free (d);
+    }
 
   if (fail)
     fprintf (stdout, "FAILED\n");

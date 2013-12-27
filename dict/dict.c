@@ -10,7 +10,6 @@
 #include <limits.h>
 #include "dict.h"
 
-
 /* Key functions for regular strings as keys. Strings are copied and
    owned by the dictionary */
 static unsigned
@@ -152,6 +151,7 @@ dict_dump (Dict * d, FILE * out,
   int n_bucket_entries;
   int total_ideal_depth = 0;
   int occupied = 0;
+  int total_nodes = 0;
   total_depth = 0;
   fprintf (out, "Dictionary at %p\n", d);
   for (i = 0; i < (1u << d->l2_n_slots); i++)
@@ -198,10 +198,13 @@ dict_dump (Dict * d, FILE * out,
           
           total_depth += bucket_total_depth;
           total_ideal_depth += ideal_depth;
+          total_nodes += n_bucket_entries;
+
         }
     }
-  fprintf (out, "n_entries=%d, rehash_benefit=%d\n",
-           d->n_entries, d->rehash_benefit);
+  fprintf (out, "n_entries=%d, total_nodes=%d, rehash_benefit=%d, slots=%d\n",
+           d->n_entries, total_nodes, d->rehash_benefit,
+           (1u << d->l2_n_slots));
   fprintf (out, "occupied=%f%%, average depth=%f, efficiency=%f%%\n",
            100.0 * (double)occupied/(1u<<d->l2_n_slots),
            (double)total_depth / d->n_entries,
@@ -273,20 +276,72 @@ void dict_dump_dot (Dict *d, FILE *out,
   fprintf (out, "}\n");
 }
 
-Dict *
-dict_new (DictKeyFuncs * funcs)
+/* Rebalancing.
+*/
+static int
+rebalance_height (DictNode *node)
 {
-  Dict *d = malloc (sizeof *d);
-  if (funcs)
-    d->keyfuncs = funcs;
+  if (node == NULL)
+    return 0;
+  else if (node->children[0])
+    {
+      if (node->children[1])
+        /* Both viable. Pick one at random. */
+        return 1 + rebalance_height (node->children[rand()&1]);
+      else
+        return 1 + rebalance_height (node->children[0]);
+    }
   else
-    d->keyfuncs = &strkeyfuncs;
-  d->l2_n_slots = 2;
-  d->slots = calloc ((1u << d->l2_n_slots), sizeof *d->slots);
-  d->n_entries = 0;
-  d->rehash_benefit = 0;
-  return d;
+    return 1 + rebalance_height (node->children[1]);
 }
+
+static void
+rebalance_node (DictNode *node)
+{
+  int lh, rh;
+  lh = rebalance_height (node->children[0]);
+  rh = rebalance_height (node->children[1]);
+
+  if (lh > rh)
+    {
+      /* Left is deeper; rotate right */
+      DictNode *lower = node->children[0],
+        *outer0 = lower->children[0],
+        *outer1 = lower->children[1],
+        *outer2 = node->children[1];
+      DictEntry tmpentry = lower->entry;
+      unsigned tmphash = lower->hash;
+      lower->entry = node->entry;
+      lower->hash = node->hash;
+      node->entry = tmpentry;
+      node->hash = tmphash;
+
+      node->children[0] = outer0;
+      node->children[1] = lower;
+      lower->children[0] = outer1;
+      lower->children[1] = outer2;
+    }
+  else if (lh < rh)
+    {
+      /* Right is deeper; rotate left */
+      DictNode *lower = node->children[1],
+        *outer0 = node->children[0],
+        *outer1 = lower->children[0],
+        *outer2 = lower->children[1];
+      DictEntry tmpentry = lower->entry;
+      unsigned tmphash = lower->hash;
+      lower->entry = node->entry;
+      lower->hash = node->hash;
+      node->entry = tmpentry;
+      node->hash = tmphash;
+
+      lower->children[0] = outer0;
+      lower->children[1] = outer1;
+      node->children[0] = lower;
+      node->children[1] = outer2;
+    }
+}
+
 
 static DictNode **search (Dict *d, const void *k, unsigned hash, 
                           int *depth_p)
@@ -296,11 +351,18 @@ static DictNode **search (Dict *d, const void *k, unsigned hash,
   int heur_size = 0;
   int heur_depth = 0;
   int depth = 0;
+  static int to_rebalance = 4;
   for (;;)
     {
       int cmp;
-
       n = *np;
+
+      if (n && to_rebalance-- <= 0)
+        {
+          to_rebalance = rand() % 16;
+          rebalance_node (n);
+        }
+
       if (!n)
         {
           *depth_p = depth;
@@ -337,6 +399,21 @@ static DictNode **search (Dict *d, const void *k, unsigned hash,
       
       depth++;
     }
+}
+
+Dict *
+dict_new (DictKeyFuncs * funcs)
+{
+  Dict *d = malloc (sizeof *d);
+  if (funcs)
+    d->keyfuncs = funcs;
+  else
+    d->keyfuncs = &strkeyfuncs;
+  d->l2_n_slots = 2;
+  d->slots = calloc ((1u << d->l2_n_slots), sizeof *d->slots);
+  d->n_entries = 0;
+  d->rehash_benefit = 0;
+  return d;
 }
 
 static void
