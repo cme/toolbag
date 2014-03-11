@@ -287,6 +287,24 @@ Dict *test_commands(Dict *d, FILE *in)
               fclose (in2);
             }
         }
+      else if (!strcmp (buffer, "n_entries"))
+        {
+          printf ("n_entries: %u\n", dict_n_entries (d));
+        }
+      else if (!strcmp (buffer, "allocated_bytes"))
+        {
+          DictEntry *de;
+          unsigned keys_total = 0, values_total = 0, dict_total = 0;
+          for (de = dict_first (d); de; de = dict_next(d, de))
+            {
+              keys_total += strlen(de->key) + 1;
+              values_total += strlen(de->value) + 1;
+            }
+          dict_total = dict_allocated_bytes (d);
+          printf ("allocated_bytes: %u (%d keys, %d values, %d structure)\n",
+                  keys_total + values_total + dict_total,
+                  keys_total, values_total, dict_total);
+        }
       else if (!strcmp (buffer, "help"))
         {
           printf ("Commands:\n"
@@ -306,7 +324,9 @@ Dict *test_commands(Dict *d, FILE *in)
                   "    verbose\n"
                   "    terse\n"
                   "    test\t// populate with test data, check integrity\n"
-                  "    include <file>\t// read commands from file\n");
+                  "    include <file>\t// read commands from file\n"
+                  "    n_entries \t// show number of entries in dictionary\n"
+                  "    allocated_bytes \t// show number of bytes allocated\n");
         }
       else
 	{

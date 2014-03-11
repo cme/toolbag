@@ -64,6 +64,12 @@ extern void dict_delete (Dict *, const void *);
 /* Free the entire dictionary. */
 extern void dict_free (Dict *);
 
+/* Number of entries in the dictionary */
+extern unsigned int dict_n_entries (Dict *);
+
+/* Amount of memory allocated to dictionary */
+extern unsigned int dict_allocated_bytes (Dict *);
+
 /* Insert multiple entries. For use primarily as a constructor. */
 extern void dict_insert_entries (Dict *, /* const void *, void *, */ ...);
 

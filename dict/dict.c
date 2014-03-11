@@ -672,6 +672,27 @@ dict_free (Dict * d)
   free (d);
 }
 
+/* Number of entries in the dictionary */
+unsigned int
+dict_n_entries (Dict *d)
+{
+  return d->n_entries;
+}
+
+/* Amount of memory allocated to dictionary */
+unsigned int
+dict_allocated_bytes (Dict *d)
+{
+  unsigned int total;
+  int i;
+  if (!d)
+    return 0;
+  total = sizeof (Dict);
+  total += sizeof (*(d->slots)) << d->l2_n_slots;
+  total += sizeof (DictNode) * d->n_entries;
+  return total;
+}
+
 /* ------------------------------------------------------------
  * Iterators
  *
