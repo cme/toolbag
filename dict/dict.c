@@ -684,7 +684,6 @@ unsigned int
 dict_allocated_bytes (Dict *d)
 {
   unsigned int total;
-  int i;
   if (!d)
     return 0;
   total = sizeof (Dict);
