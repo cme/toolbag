@@ -1,2 +1,3 @@
 SubDir TOP dict ;
 Main test_dict : test_dict.c dict.c ;
+Main tablemark : tablemark.c dict.c ;
