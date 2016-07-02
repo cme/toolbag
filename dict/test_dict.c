@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "dict.h"
+#include <unistd.h>
 
 struct test_item {
   char *key;
@@ -82,6 +83,8 @@ Dict *test_commands(Dict *d, FILE *in)
       char buffer2[BUFSIZ];
       updated = 0;
       /* Get word from input */
+      if (isatty (fileno (in)))
+        fprintf (stdout, "> ");
       if (fscanf (in, "%s", buffer) != 1)
 	break;
       /* Decode commands */
