@@ -12,7 +12,7 @@
 #include <assert.h>
 #include "dict.h"
 
-const int max_keys = 1024 * 1024;
+const int max_keys = 250000;
 const int min_key_len = 5;
 const int max_key_len = 10;
 const int step = 128;
@@ -57,6 +57,7 @@ void test_round (int rounds, char **keys, int num_keys)
   int count = 0;
   double t;
   struct rusage usage0, usage1;
+  DictEntry *de;
   /* Populate dictionary */
   
   for (i = 0; i < num_keys; i++)
@@ -73,6 +74,8 @@ void test_round (int rounds, char **keys, int num_keys)
     }
 
   getrusage (0, &usage1);
+
+  dict_free (d);
 
   /* Print out line */
   t = tv_diff(NULL, &usage1.ru_utime, &usage0.ru_utime);
