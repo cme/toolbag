@@ -546,25 +546,19 @@ dict_insert (Dict * d, const void *k, void *value)
 {
   unsigned hash = d->keyfuncs->hash_fn (k);
   int depth;
+  DictNode *n;
   DictNode **np = search (d, k, hash, &depth);
-  if (*np)
-    {
-      /* Just set */
-      (*np)->entry.value = value;
-    }
+  assert(!*np);
+  n = malloc (sizeof *n);
+  if (d->keyfuncs->dup_fn)
+    n->entry.key = d->keyfuncs->dup_fn (k);
   else
-    {
-      DictNode *n = malloc (sizeof *n);
-      if (d->keyfuncs->dup_fn)
-        n->entry.key = d->keyfuncs->dup_fn (k);
-      else
-        n->entry.key = k;
-      n->entry.value = value;
-      n->hash = hash;
-      n->children[0] = n->children[1] = NULL;
-      *np = n;
-      d->n_entries++;
-    }
+    n->entry.key = k;
+  n->entry.value = value;
+  n->hash = hash;
+  n->children[0] = n->children[1] = NULL;
+  *np = n;
+  d->n_entries++;
   CHECK_REHASH (d, depth);
 }
 
