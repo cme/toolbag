@@ -276,8 +276,21 @@ void dict_dump_dot (Dict *d, FILE *out,
   fprintf (out, "}\n");
 }
 
-/* Rebalancing.
-*/
+
+/* Statistical Rebalancing.
+ * To try to avoid unbalanced binary trees, but without incurring the
+ * extra storage overhead for an AVL or RB tree, this statistical
+ * rebalancing scheme uses:
+ *   - picking a traversed node at random to rebalance
+ *   - using a non-deterministic probe to guess the height of the
+ *     subtrees (which costs O(log2(n)) time)
+ *   - applying simple rotation to rebalance in the case where the
+ *     subtrees are guessed to be unbalanced.
+ */
+
+/* Trace a single random path through the tree, returning the length
+ * of that path.
+ */
 static int
 rebalance_height (DictNode *node)
 {
@@ -342,6 +355,11 @@ rebalance_node (DictNode *node)
     }
 }
 
+static bool lock_rebalance = false;
+extern void dict_lock_rebalance_TEST(bool lock)
+{
+  lock_rebalance = lock;
+}
 
 static DictNode **search (Dict *d, const void *k, unsigned hash, 
                           int *depth_p)
@@ -351,7 +369,7 @@ static DictNode **search (Dict *d, const void *k, unsigned hash,
   int heur_size = 0;
   int heur_depth = 0;
   int depth = 0;
-  static int to_rebalance = 4;
+  static int to_rebalance = 16;
   for (;;)
     {
       int cmp;
@@ -360,7 +378,8 @@ static DictNode **search (Dict *d, const void *k, unsigned hash,
       if (n && to_rebalance-- <= 0)
         {
           to_rebalance = rand() % 16;
-          rebalance_node (n);
+          if (!lock_rebalance)
+            rebalance_node (n);
         }
 
       if (!n)
@@ -452,9 +471,15 @@ rehash (Dict * d, int size)
   free (old_slots);
 }
 
+static bool lock_rehash = false;
+
 extern void dict_rehash_TEST (Dict *d, int size)
 {
   rehash (d, size);
+}
+extern void dict_lock_rehash_TEST(bool lock)
+{
+  lock_rehash = lock;
 }
 
 /* Expanding the hash table costs approximately O(n.log(n)) in
@@ -472,9 +497,9 @@ extern void dict_rehash_TEST (Dict *d, int size)
    these contributes a linear factor to the cost of the rehashing.
 */
 #define CHECK_REHASH(d, depth) do {             \
-if (depth != 0)                                 \
+if (depth != 0 && !lock_rehash)                 \
   {                                             \
-    (d)->rehash_benefit++;                      \
+    (d)->rehash_benefit+=depth;                 \
     check_rehash ((d), (depth));                \
   }                                             \
  } while (0)

@@ -9,7 +9,9 @@
 struct test_item {
   char *key;
   char *value;
-} test_items[] = {
+};
+
+struct test_item test_items[] = {
   { "hum hum hum", "hello!" },
   { "Hello", "THERE!" },
   { "LA LA LA", "thar" },
@@ -127,7 +129,7 @@ Dict *test_commands(Dict *d, FILE *in)
           FILE *out;
           static int count = 1;
           char fname[BUFSIZ];
-          sprintf (fname, "dict_%d.dot", count++);
+          sprintf (fname, "dict_%04d.dot", count++);
           fprintf (stdout, "Writing '%s'\n", fname);
           out = fopen (fname, "w");
           if (!out)
@@ -216,6 +218,30 @@ Dict *test_commands(Dict *d, FILE *in)
 	    break;
 	  dict_rehash_TEST (d, atoi (buffer));
 	}
+      else if (!strcmp (buffer, "lock_rehash"))
+        {
+          extern void dict_lock_rehash_TEST (bool lock);
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          if (!strcmp(buffer, "true"))
+            dict_lock_rehash_TEST (true);
+          else if (!strcmp(buffer, "false"))
+            dict_lock_rehash_TEST (false);
+          else
+            printf ("Syntax: lock_rehash true|false\n");
+        }
+      else if (!strcmp (buffer, "lock_rebalance"))
+        {
+          extern void dict_lock_rebalance_TEST (bool lock);
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          if (!strcmp(buffer, "true"))
+            dict_lock_rebalance_TEST (true);
+          else if (!strcmp(buffer, "false"))
+            dict_lock_rebalance_TEST (false);
+          else
+            printf ("Syntax: lock_rebalance true|false\n");
+        }
       else if (!strcmp (buffer, "decode"))
 	{
 	  DictDecode dd[] = {
@@ -231,6 +257,18 @@ Dict *test_commands(Dict *d, FILE *in)
 	  val = dict_decode (&d, dd, buffer);
 	  printf ("Decoded value '%s' -> %d\n", buffer, val);
 	}
+      else if (!strcmp (buffer, "sequence"))
+        {
+          char c;
+          for (c ='A'; c <= 'z'; c++)
+            {
+              char k[2] = { c, '\0' };
+              sprintf(buffer, "The answer is '%c' (code %d)", c, c);
+              dict_set (d, k, strdup(buffer));
+              if (c == 'Z')
+                c = 'a' -1;
+            }
+        }
       else if (!strcmp (buffer, "test"))
         {
           int i, j;
@@ -329,7 +367,10 @@ Dict *test_commands(Dict *d, FILE *in)
                   "    test\t// populate with test data, check integrity\n"
                   "    include <file>\t// read commands from file\n"
                   "    n_entries \t// show number of entries in dictionary\n"
-                  "    allocated_bytes \t// show number of bytes allocated\n");
+                  "    allocated_bytes \t// show number of bytes allocated\n"
+                  "    sequence \tinsert test data, in sorted order\n"
+                  "    lock_rehash <true|false> \tdisable or enable rehashing\n"
+                  "    lock_rebalance <true|false> \tdisable or enable tree rebalancing\n");
         }
       else
 	{
