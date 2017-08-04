@@ -276,6 +276,13 @@ void dict_dump_dot (Dict *d, FILE *out,
   fprintf (out, "}\n");
 }
 
+void
+dict_dumpf_dot (Dict *d, FILE *out, const char *fmt)
+{
+  dict_dump_fmt = fmt;
+  dict_dump_dot (d, out, print_dict_dump_fmt);
+}
+
 
 /* Statistical Rebalancing.
  * To try to avoid unbalanced binary trees, but without incurring the

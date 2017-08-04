@@ -138,6 +138,7 @@ extern void dict_dumpf (Dict * d, FILE * out, const char *fmt);
 extern void dict_dump_dot (Dict *d, FILE *out,
                            void (*print) (FILE * out, const void *k,
                                           void *value));
+extern void dict_dumpf_dot (Dict *d, FILE *out, const char *fmt);
 
 
 #endif
