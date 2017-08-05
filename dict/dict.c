@@ -106,25 +106,48 @@ hash_to_index (Dict * d, unsigned hash)
           & ((1u << d->l2_n_slots) -1));
 }
 
+typedef struct Indent Indent;
+struct Indent {
+  Indent *prev;
+  char *str;
+};
+
+static void
+print_indent(FILE *out, Indent *indent)
+{
+  if (indent)
+    {
+      if (indent->prev)
+        print_indent(out, indent->prev);
+      fputs(indent->str, out);
+    }
+}
+
 static void
 dict_dump_nodes (Dict *d, FILE *out,
                  void (*print) (FILE *out, const void *k, void *value),
                  DictNode *n, int depth, int childno,
-                 int *total_depth, int *n_entries)
+                 int *total_depth, int *n_entries,
+                 Indent *parent_indent)
 {
   int i;
+  Indent indent = { parent_indent, NULL };
+  if (childno == 0)
+    /* First child of our parent, left will be clear. */
+    indent.str = "    ";
+  else
+    indent.str = "|   ";
+  
   if (n->children[0])
     dict_dump_nodes (d, out, print, n->children[0], depth + 1, 0,
-                     total_depth, n_entries);
+                     total_depth, n_entries, &indent);
 
-  for (i = 0; i < depth; i++)
-    fputs ("    ", out);
   if (childno == 0)
-    fputs (".-> ", out);
-  else if (childno == 1)
-    fputs ("'-> ", out);
+    indent.str = ".-->";
   else
-    fputs ("|-> ", out);
+    indent.str = "'-->";
+  print_indent(out, &indent);
+  
   fprintf (out, "hash=0x%x ", n->hash);
   if (print)
     print (out, n->entry.key, n->entry.value);
@@ -136,9 +159,14 @@ dict_dump_nodes (Dict *d, FILE *out,
   *total_depth += 1 + depth;
   *n_entries += 1;
 
+  if (childno == 0)
+    indent.str = "|   ";
+  else
+    indent.str = "    ";
+ 
   if (n->children[1])
     dict_dump_nodes (d, out, print, n->children[1], depth + 1, 1,
-                     total_depth, n_entries);
+                     total_depth, n_entries, &indent);
 
 }
 
@@ -167,7 +195,7 @@ dict_dump (Dict * d, FILE * out,
           occupied++;
           dict_dump_nodes (d, out, print, n, 0, 2,
                            &bucket_total_depth,
-                           &n_bucket_entries);
+                           &n_bucket_entries, NULL);
           
           /* Calculate the total depth of a perfectly balanced
              tree containing N_BUCKET_ENTRIES nodes */
