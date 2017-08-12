@@ -79,6 +79,10 @@ int updated = 0;
 
 Dict *test_commands(Dict *d, FILE *in)
 {
+  extern void dict_rehash_TEST (Dict *d, int size);
+  extern void dict_lock_rehash_TEST (int);
+  extern void dict_lock_rebalance_TEST (int);
+
   while (!feof (in))
     {
       char buffer[BUFSIZ];
@@ -88,44 +92,45 @@ Dict *test_commands(Dict *d, FILE *in)
       if (isatty (fileno (in)))
         fprintf (stdout, "> ");
       if (fscanf (in, "%s", buffer) != 1)
-	break;
+        break;
       /* Decode commands */
       if (!strcmp (buffer, "set"))
-	{
+        {
           updated = 1;
-	  if (fscanf (in, "%s", buffer) != 1)
-	    break;
-	  if (fscanf (in, "%s", buffer2) != 1)
-	    break;
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          if (fscanf (in, "%s", buffer2) != 1)
+            break;
           if (dict_has_key (d, buffer))
             free (dict_get (d, buffer));
-	  dict_set (d, buffer, strdup (buffer2));
-	}
+          dict_set (d, buffer, strdup (buffer2));
+        }
       else if (!strcmp (buffer, "insert"))
-	{
+        {
           updated = 1;
-	  if (fscanf (in, "%s", buffer) != 1)
-	    break;
-	  if (fscanf (in, "%s", buffer2) != 1)
-	    break;
-	  dict_insert (d, buffer, strdup (buffer2));
-	}
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          if (fscanf (in, "%s", buffer2) != 1)
+            break;
+          dict_insert (d, buffer, strdup (buffer2));
+        }
       else if (!strcmp (buffer, "get"))
-	{
-	  if (fscanf (in, "%s", buffer) != 1)
-	    break;
-	  printf ("'%s' => '%s'\n", buffer, (char *) dict_get (d, buffer));
-	}
+        {
+          updated = 1;          /* Possibly implicitly updated by rebalance or rehash */
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          printf ("'%s' => '%s'\n", buffer, (char *) dict_get (d, buffer));
+        }
       else if (!strcmp (buffer, "dump"))
-	{
-	  dict_dump (d, stdout, print_str_str);
-	}
+        {
+          dict_dump (d, stdout, print_str_str);
+        }
       else if (!strcmp (buffer, "verbose"))
         verbose = 1;
       else if (!strcmp (buffer, "terse"))
         verbose = 0;
       else if (!strcmp (buffer, "dot"))
-	{
+        {
           FILE *out;
           static int count = 1;
           char fname[BUFSIZ];
@@ -142,85 +147,83 @@ Dict *test_commands(Dict *d, FILE *in)
               dict_dump_dot (d, out, print_str_str);
               fclose (out);
             }
-	}
+        }
       else if (!strcmp (buffer, "check"))
-	{
-	  char *res;
-	  if (fscanf (in, "%s", buffer) != 1)
-	    break;
-	  if (fscanf (in, "%s", buffer2) != 1)
-	    break;
-	  res = dict_get (d, buffer);
-	  if (!res || strcmp (buffer2, res))
-	    {
+        {
+          char *res;
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          if (fscanf (in, "%s", buffer2) != 1)
+            break;
+          res = dict_get (d, buffer);
+          if (!res || strcmp (buffer2, res))
+            {
               if (res)
                 printf ("Check fail: '%s' => '%s', should be '%s'\n",
                         buffer, (char *) dict_get (d, buffer), buffer2);
               else
                 printf ("Check fail: '%s' => NULL, should be '%s'\n",
                         buffer, buffer2);
-	      fail = true;
-	    }
-	}
+              fail = true;
+            }
+        }
       else if (!strcmp (buffer, "checknull"))
-	{
-	  char *res;
-	  if (fscanf (in, "%s", buffer) != 1)
-	    break;
-	  res = dict_get (d, buffer);
-	  if (res != NULL)
-	    {
+        {
+          char *res;
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          res = dict_get (d, buffer);
+          if (res != NULL)
+            {
               printf ("Check fail: '%s' => '%s', should be NULL\n",
                       buffer, (char *) dict_get (d, buffer));
-	      fail = true;
-	    }
-	}
+              fail = true;
+            }
+        }
       else if (!strcmp (buffer, "delete"))
-	{
+        {
           updated = 1;
-	  if (fscanf (in, "%s", buffer) != 1)
-	    break;
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
           if (dict_has_key (d, buffer))
             free (dict_get (d, buffer));
-	  dict_delete (d, buffer);
-	}
+          dict_delete (d, buffer);
+        }
       else if (!strcmp (buffer, "exit") || !strcmp (buffer, "quit"))
-	{
-	  printf ("Exiting\n");
-	  break;
-	}
+        {
+          printf ("Exiting\n");
+          break;
+        }
       else if (!strcmp (buffer, "free"))
-	{
+        {
           DictEntry *de;
           updated = 1;
           for (de = dict_first (d); de; de = dict_next (d, de))
             free (de->value);
-	  dict_free (d);
-	  d = dict_new (NULL);
-	  printf ("Cleared dictionary\n");
-	}
+          dict_free (d);
+          d = dict_new (NULL);
+          printf ("Cleared dictionary\n");
+        }
       else if (!strcmp (buffer, "list"))
-	{
-	  DictEntry *de;
+        {
+          DictEntry *de;
           int count = 0;
-	  for (de = dict_first (d); de; de = dict_next (d, de))
-	    {
-	      printf ("'%s' -> '%s'\n", (char *) de->key, (char *) de->value);
+          for (de = dict_first (d); de; de = dict_next (d, de))
+            {
+              printf ("'%s' -> '%s'\n", (char *) de->key, (char *) de->value);
               count++;
-	    }
+            }
           printf ("count=%d\n", count);
-	}
+        }
       else if (!strcmp (buffer, "rehash"))
-	{
-	  extern void dict_rehash_TEST (Dict *d, int size);
+        {
           updated = 1;
-	  if (fscanf (in, "%s", buffer) != 1)
-	    break;
-	  dict_rehash_TEST (d, atoi (buffer));
-	}
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          dict_rehash_TEST (d, atoi (buffer));
+        }
       else if (!strcmp (buffer, "lock_rehash"))
         {
-          extern void dict_lock_rehash_TEST (bool lock);
           if (fscanf (in, "%s", buffer) != 1)
             break;
           if (!strcmp(buffer, "true"))
@@ -232,7 +235,6 @@ Dict *test_commands(Dict *d, FILE *in)
         }
       else if (!strcmp (buffer, "lock_rebalance"))
         {
-          extern void dict_lock_rebalance_TEST (bool lock);
           if (fscanf (in, "%s", buffer) != 1)
             break;
           if (!strcmp(buffer, "true"))
@@ -242,21 +244,39 @@ Dict *test_commands(Dict *d, FILE *in)
           else
             printf ("Syntax: lock_rebalance true|false\n");
         }
+      else if (!strcmp (buffer, "lock"))
+        {
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          if (!strcmp (buffer, "rehash"))
+            dict_lock_rehash_TEST (true);
+          else if (!strcmp (buffer, "rebalance"))
+            dict_lock_rebalance_TEST (true);
+        }
+      else if (!strcmp (buffer, "unlock"))
+        {
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          if (!strcmp (buffer, "rehash"))
+            dict_lock_rehash_TEST (false);
+          else if (!strcmp (buffer, "rebalance"))
+            dict_lock_rebalance_TEST (false);
+        }
       else if (!strcmp (buffer, "decode"))
-	{
-	  DictDecode dd[] = {
-	    {"one", 1},
-	    {"two", 2},
-	    {"three", 3},
-	    {NULL, 0}
-	  };
-	  static Dict *d;
-	  int val;
-	  if (fscanf (in, "%s", buffer) != 1)
-	    break;
-	  val = dict_decode (&d, dd, buffer);
-	  printf ("Decoded value '%s' -> %d\n", buffer, val);
-	}
+        {
+          DictDecode dd[] = {
+            {"one", 1},
+            {"two", 2},
+            {"three", 3},
+            {NULL, 0}
+          };
+          static Dict *d;
+          int val;
+          if (fscanf (in, "%s", buffer) != 1)
+            break;
+          val = dict_decode (&d, dd, buffer);
+          printf ("Decoded value '%s' -> %d\n", buffer, val);
+        }
       else if (!strcmp (buffer, "sequence"))
         {
           char c;
@@ -301,7 +321,7 @@ Dict *test_commands(Dict *d, FILE *in)
                       if (res != NULL)
                         {
                           printf ("Test fail: spurious value for key '%s'\n",
-                                   test_items[j].key);
+                                  test_items[j].key);
                           fail = true;
                         }
                     }
@@ -370,12 +390,14 @@ Dict *test_commands(Dict *d, FILE *in)
                   "    allocated_bytes \t// show number of bytes allocated\n"
                   "    sequence \tinsert test data, in sorted order\n"
                   "    lock_rehash <true|false> \tdisable or enable rehashing\n"
-                  "    lock_rebalance <true|false> \tdisable or enable tree rebalancing\n");
+                  "    lock_rebalance <true|false> \tdisable or enable tree rebalancing\n"
+                  "    lock <rehash|rebalance>\t disable rehashing or rebalancing\n"
+                  "    unlock <rehash|rebalance>\t enable rehashing or rebalancing\n");
         }
       else
-	{
-	  printf ("Unknown command '%s'\n", buffer);
-	}
+        {
+          printf ("Unknown command '%s'\n", buffer);
+        }
 
       if (verbose && updated)
         {
